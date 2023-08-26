@@ -1,6 +1,6 @@
 @echo off
 
-@REM Scan port website dengan OP-nya, simpan result-nya ke file .log
+@REM Scan port website dengan IP-nya, simpan result-nya ke file .log
 
 @REM Timeout 0.001 detik
 SET CURL_TIMEOUT="0.001"
@@ -18,5 +18,6 @@ for /l %%x in (1, 1, 65535) do (
 )
 
 echo "Header:" >> %output%
-curl -v -L -X HEAD --connect-timeout %CURL_TIMEOUT% "%IPServer%" >> %output%
+curl -I --connect-timeout %CURL_TIMEOUT% "%IPServer%" >> %output%
+@REM curl -v -L -X HEAD --connect-timeout %CURL_TIMEOUT% "%IPServer%" >> %output%
 @pause
