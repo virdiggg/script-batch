@@ -182,6 +182,12 @@ if ($targetDb -eq "sqlserver") {
     # Temp file SQL Server
     $restoreDir = Join-Path -Path $targetFolder -ChildPath "temp"
 
+    $sqlserverParams = @("-U", $userDb, "-S", $defaultHost)
+    if ($passDb -and $passDb.Trim() -ne "") {
+        $sqlserverParams += "-P"
+        $sqlserverParams += $passDb
+    }
+
     # Rename semua file .bak biar gampang dibaca
     Write-Output "[>] Rename dan Restore semua file .bak"
     Get-ChildItem -Path $targetFolder -Recurse -Filter *.bak | ForEach-Object {
@@ -215,7 +221,7 @@ if ($targetDb -eq "sqlserver") {
 
         # DROP db dulu kalo ada
         $dropCmd = "IF EXISTS (SELECT name FROM sys.databases WHERE name = N'$dbName') BEGIN ALTER DATABASE [$dbName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$dbName]; END;"
-        $dropResult = & sqlcmd -S $defaultHost -U $userDb -P $passDb -Q "$dropCmd" 2>&1
+        $dropResult = & sqlcmd -S @sqlserverParams -Q "$dropCmd" 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Output "[OK] DROP ${dbName}: berhasil"
         }
@@ -224,7 +230,7 @@ if ($targetDb -eq "sqlserver") {
         }
 
         # Cek Logical Name dalam metadata file
-        $fileListRaw = & sqlcmd -S $defaultHost -U $userDb -P $passDb -Q "RESTORE FILELISTONLY FROM DISK = N'$bakFile'" -s "|" -W 2>&1
+        $fileListRaw = & sqlcmd -S @sqlserverParams -Q "RESTORE FILELISTONLY FROM DISK = N'$bakFile'" -s "|" -W 2>&1
         if ($LASTEXITCODE -ne 0 -or -not ($fileListRaw -match "LogicalName")) {
             Write-Warning "[X] Tidak bisa baca struktur .bak: $($_.Name)"
             return
@@ -250,7 +256,7 @@ if ($targetDb -eq "sqlserver") {
 
         # Eksekusi query restore
         $restoreQuery = "RESTORE DATABASE [$dbName] FROM DISK = N'$bakFile' WITH MOVE N'$mdfLogical' TO N'$mdfPath', MOVE N'$ldfLogical' TO N'$ldfPath', REPLACE, STATS = 5"
-        $restoreResult = & sqlcmd -S $defaultHost -U $userDb -P $passDb -Q "$restoreQuery" 2>&1
+        $restoreResult = & sqlcmd -S @sqlserverParams -Q "$restoreQuery" 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Output "[OK] RESTORE ${dbName}: berhasil"
         }
