@@ -47,7 +47,7 @@ if ($targetDb -eq "mysql") {
 else {
     $defUserInputFolder = $defaultFolderSqlserver
 }
-$userInputTarget = Read-Host -Prompt "Enter your .sql folder (Default: [$defUserInputFolder])"
+$userInputFolder = Read-Host -Prompt "Enter your .sql folder (Default: [$defUserInputFolder])"
 
 if ([string]::IsNullOrWhiteSpace($userInputFolder)) {
     $targetFolder = $defUserInputFolder
