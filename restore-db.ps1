@@ -9,7 +9,7 @@ $defaultFolderMysql = "D:\dump\db\mysql"
 $defaultFolderSqlserver = "D:\dump\db\sqlserver"
 $restoreDir = Join-Path -Path $defaultFolderSqlserver -ChildPath "temp"
 
-Write-Warning "Make sure .sql for mysql and sqlserver is in different folder"
+Write-Warning "Make sure .sql for mysql and .bak for sqlserver is in different folder"
 
 $userInputDb = Read-Host -Prompt "Enter your database type (mysql or sqlserver) (Default: [$defaultDb])"
 if ([string]::IsNullOrWhiteSpace($userInputDb)) {
