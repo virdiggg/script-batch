@@ -32,12 +32,7 @@ else {
 $userInputUser = Read-Host -Prompt "Enter your database user (Default: [$defUserInputDb])"
 
 if ([string]::IsNullOrWhiteSpace($userInputUser)) {
-    if ($targetDb -eq "mysql") {
-        $userDb = $defaultUserMysql
-    }
-    else {
-        $userDb = $defaultUserSqlserver
-    }
+    $userDb = $defUserInputDb
 }
 else {
     $userDb = $userInputUser
@@ -52,15 +47,10 @@ if ($targetDb -eq "mysql") {
 else {
     $defUserInputFolder = $defaultFolderSqlserver
 }
-$userInputUser = Read-Host -Prompt "Enter your .sql folder (Default: [$defUserInputFolder])"
+$userInputTarget = Read-Host -Prompt "Enter your .sql folder (Default: [$defUserInputFolder])"
 
 if ([string]::IsNullOrWhiteSpace($userInputFolder)) {
-    if ($targetDb -eq "mysql") {
-        $targetFolder = $defaultFolderMysql
-    }
-    else {
-        $targetFolder = $defaultFolderSqlserver
-    }
+    $targetFolder = $defUserInputFolder
 }
 else {
     $targetFolder = $userInputFolder
