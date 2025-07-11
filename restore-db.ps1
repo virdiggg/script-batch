@@ -86,6 +86,68 @@ function Check-Tool {
                 "C:\Program Files\7-Zip",
                 "C:\Program Files (x86)\7-Zip"
             )
+            # Check if 7z exists in fallback locations
+            $found = $false
+            foreach ($binDir in $fallbacks) {
+                if (Test-Path (Join-Path $binDir "7z.exe")) {
+                    $found = $true
+                    break
+                }
+            }
+            # If not found in fallback locations, download and install
+            if (-not $found) {
+                Write-Output "[!] 7-Zip not found. Downloading and installing..."
+                try {
+                    $downloadUrl = "https://www.7-zip.org/a/7z2500-x64.exe"
+                    $tempFile = Join-Path $env:TEMP "7z2500-x64.exe"
+
+                    # Download 7-Zip installer
+                    Write-Output "[>] Downloading 7-Zip from $downloadUrl"
+                    Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile -UseBasicParsing
+
+                    # Install 7-Zip silently
+                    Write-Output "[>] Installing 7-Zip..."
+                    Start-Process -FilePath $tempFile -ArgumentList "/S" -Wait
+
+                    # Clean up temp file
+                    Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
+
+                    # Add to fallbacks again after installation
+                    $fallbacks = @(
+                        "C:\Program Files\7-Zip",
+                        "C:\Program Files (x86)\7-Zip"
+                    )
+                    Write-Output "[OK] 7-Zip installation completed"
+                }
+                catch {
+                    Write-Warning "[X] Failed to download/install 7-Zip: $_"
+                }
+            }
+        }
+
+        "gzip" {
+            # Git fallback locations
+            $gitDirs = @(
+                "C:\Program Files\Git\usr\bin",
+                "C:\Program Files (x86)\Git\usr\bin"
+            )
+            foreach ($drive in @("C:", "D:", "E:")) {
+                # Portable Git installations
+                $portableGit = Join-Path "$drive\" "PortableGit\usr\bin"
+                if (Test-Path $portableGit) {
+                    $gitDirs += $portableGit
+                }
+                # Git installations in other common locations
+                $gitRoot = Join-Path "$drive\" "Git\usr\bin"
+                if (Test-Path $gitRoot) {
+                    $gitDirs += $gitRoot
+                }
+            }
+            foreach ($gitBin in $gitDirs) {
+                if (Test-Path (Join-Path $gitBin "$Tool.exe")) {
+                    $fallbacks += $gitBin
+                }
+            }
         }
 
         "mysql" {
