@@ -68,7 +68,7 @@ else {
 
 if (-not (Test-Path $targetFolder)) {
     Write-Error "Target folder does not exist: $targetFolder"
-    exit 1
+    return
 }
 
 Write-Output "Configuration:"
@@ -152,7 +152,7 @@ function Check-Tool {
     }
 
     Write-Error "[X] $Tool not found in PATH or fallback locations. Please install or add to PATH."
-    exit 1
+    return
 }
 
 foreach ($tool in @("7z", "gzip", "mysql", "mysqladmin", "sqlcmd")) {
