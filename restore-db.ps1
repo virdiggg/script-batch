@@ -267,10 +267,15 @@ if ($targetDb -eq "mysql") {
         "db_registrasi", "ememes", "healty_report", "plat_kendaraan", "sso7", "riaden", "riadene", "legalitas-makloon"
     )
 
+    $mysqlParams = @("-u", $userDb, "-h", $defaultHost)
+    if ($passDb -and $passDb.Trim() -ne "") {
+        $mysqlParams += "-p$passDb"
+    }
+
     # Drop db, terus buat lagi
     foreach ($db in $dbList) {
         # Drop DB
-        $dropResult = & mysql -u $userDb -p"$passDb" -h $defaultHost -e "DROP DATABASE IF EXISTS ``${db}``;" 2>&1
+        $dropResult = & mysql @mysqlParams -e "DROP DATABASE IF EXISTS ``${db}``;" 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Output "[OK] DROP ${db}: berhasil"
         }
@@ -279,7 +284,7 @@ if ($targetDb -eq "mysql") {
         }
 
         # Create DB
-        $createResult = & mysql -u $userDb -p"$passDb" -h $defaultHost -e "CREATE DATABASE ``${db}``;" 2>&1
+        $createResult = & mysql @mysqlParams -e "CREATE DATABASE ``${db}``;" 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Output "[OK] CREATE ${db}: berhasil"
         }
@@ -314,7 +319,7 @@ if ($targetDb -eq "mysql") {
         $dbName = $fileName -replace "_\d{8}_\d{6}$", ""
 
         Write-Output "[>] Import ke DB: $dbName dari $($_.Name)"
-        Get-Content -Raw -Path $finalSqlFile | & mysql -u $userDb -p"$passDb" -h $defaultHost $dbName
+        Get-Content -Raw -Path $finalSqlFile | & mysql @mysqlParams $dbName
 
         # Kalo ada file .cleaned.sql, hapus
         if (Test-Path $cleanSqlPath) {
