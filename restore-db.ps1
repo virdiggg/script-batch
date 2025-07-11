@@ -284,6 +284,7 @@ if ($targetDb -eq "sqlserver") {
         # DROP db dulu kalo ada
         $dropCmd = "IF EXISTS (SELECT name FROM sys.databases WHERE name = N'$dbName') BEGIN ALTER DATABASE [$dbName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$dbName]; END;"
         $dropResult = & sqlcmd @sqlserverParams -Q "$dropCmd" 2>&1
+
         if ($LASTEXITCODE -eq 0) {
             Write-Output "[OK] DROP ${dbName}: berhasil"
         }
