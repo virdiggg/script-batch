@@ -20,3 +20,12 @@
 - Double click `scan_port.bat`
 - Tunggu selesai
 - Cek hasilnya di file `output_scan.bat`
+
+## Cara pake **`restore-db.ps1`**
+Bisa buat restore DB MySQL dan SQL Server 2008
+- Buka `powershell`
+- Ketik
+```
+irm https://raw.githubusercontent.com/virdiggg/script-batch/refs/heads/master/restore-db.ps1 | iex
+```
+- Ikutin instruksinya
