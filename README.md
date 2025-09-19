@@ -21,6 +21,17 @@
 - Tunggu selesai
 - Cek hasilnya di file `output_scan.bat`
 
+## Cara pake **`installing_pecl.bat`**
+Install PECL di Windows, tambah PHP ke PATH (kalo belum ada)
+- Copas file `installing_pecl.bat` ke dalam folder instalasi PHP.
+Misalnya `C:/xampp/php` atau `D:/laragon/bin/php/php8`
+- Double click `installing_pecl.bat`
+- Ikutin instruksinya
+- Setelah selesai, jalankan
+```
+pecl channel-update pecl.php.net
+```
+
 ## Cara pake **`restore-db.ps1`**
 Bisa buat restore DB MySQL dan SQL Server 2008
 - Buka `powershell`
