@@ -5,6 +5,7 @@ function Info($msg)  { Write-Host "[>] $msg" -ForegroundColor Cyan }
 function Ok($msg)    { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Warn($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
 function Err($msg)   { Write-Host "[X] $msg" -ForegroundColor Red }
+function Blank($msg) { Write-Host "$msg" }
 
 function Ensure-Elevated {
     $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
