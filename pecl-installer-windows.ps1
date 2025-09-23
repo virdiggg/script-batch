@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-function Info($msg)  { Write-Host "[*] $msg" -ForegroundColor Cyan }
+function Info($msg)  { Write-Host "[>] $msg" -ForegroundColor Cyan }
 function Ok($msg)    { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Warn($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
 function Err($msg)   { Write-Host "[X] $msg" -ForegroundColor Red }
