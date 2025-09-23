@@ -1,6 +1,11 @@
 #requires -Version 5.1
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+function Info($msg)  { Write-Host "[*] $msg" -ForegroundColor Cyan }
+function Ok($msg)    { Write-Host "$msg" -ForegroundColor Green }
+function Warn($msg)  { Write-Host "$msg" -ForegroundColor Yellow }
+function Err($msg)   { Write-Host "$msg" -ForegroundColor Red }
+
 $defaultDb = "mysql"
 $defaultUserMysql = "root"
 $defaultUserSqlserver = "sa"
@@ -9,7 +14,7 @@ $defaultFolderMysql = "D:\dump\db\mysql"
 $defaultFolderSqlserver = "D:\dump\db\sqlserver"
 $restoreDir = Join-Path -Path $defaultFolderSqlserver -ChildPath "temp"
 
-Write-Warning "Make sure .sql for mysql and .bak for sqlserver is in different folder"
+Warn "Make sure .sql for mysql and .bak for sqlserver is in different folder"
 
 $userInputDb = Read-Host -Prompt "Enter your database type (mysql or sqlserver) (Default: [$defaultDb])"
 if ([string]::IsNullOrWhiteSpace($userInputDb)) {
@@ -19,7 +24,7 @@ elseif ($userInputDb -eq "mysql" -or $userInputDb -eq "sqlserver") {
     $targetDb = $userInputDb
 }
 else {
-    Write-Host "Invalid database type. Using default: $defaultDb"
+    Warn "Invalid database type. Using default: $defaultDb"
     $targetDb = $defaultDb
 }
 
@@ -57,26 +62,26 @@ else {
 }
 
 if (-not (Test-Path $targetFolder)) {
-    Write-Error "Target folder does not exist: $targetFolder"
+    Err "Target folder does not exist: $targetFolder"
     return
 }
 
-Write-Output "Configuration:"
-Write-Output "  Database: $targetDb"
-Write-Output "  User DB: $userDb"
-Write-Output "  Target Folder: $targetFolder"
-Write-Output ""
+Info "Configuration:"
+Info "  Database: $targetDb"
+Info "  User DB: $userDb"
+Info "  Target Folder: $targetFolder"
+Info ""
 
 function Check-Tool {
     param($Tool)
 
     $cmd = Get-Command $Tool -ErrorAction SilentlyContinue
     if ($cmd) {
-        Write-Output "[OK] Found $Tool in PATH: $($cmd.Source)"
+        Ok "Found $Tool in PATH: $($cmd.Source)"
         return
     }
 
-    Write-Warning "$Tool not found in PATH. Trying fallback locations..."
+    Warn "$Tool not found in PATH. Trying fallback locations..."
 
     $fallbacks = @()
 
@@ -96,17 +101,17 @@ function Check-Tool {
             }
             # If not found in fallback locations, download and install
             if (-not $found) {
-                Write-Output "[!] 7-Zip not found. Downloading and installing..."
+                Ok "7-Zip not found. Downloading and installing..."
                 try {
                     $downloadUrl = "https://www.7-zip.org/a/7z2500-x64.exe"
                     $tempFile = Join-Path $env:TEMP "7z2500-x64.exe"
 
                     # Download 7-Zip installer
-                    Write-Output "[>] Downloading 7-Zip from $downloadUrl"
+                    Ok "Downloading 7-Zip from $downloadUrl"
                     Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile -UseBasicParsing
 
                     # Install 7-Zip silently
-                    Write-Output "[>] Installing 7-Zip..."
+                    Ok "Installing 7-Zip..."
                     Start-Process -FilePath $tempFile -ArgumentList "/S" -Wait
 
                     # Clean up temp file
@@ -117,10 +122,10 @@ function Check-Tool {
                         "C:\Program Files\7-Zip",
                         "C:\Program Files (x86)\7-Zip"
                     )
-                    Write-Output "[OK] 7-Zip installation completed"
+                    Ok "7-Zip installation completed"
                 }
                 catch {
-                    Write-Warning "[X] Failed to download/install 7-Zip: $_"
+                    Err "Failed to download/install 7-Zip: $_"
                 }
             }
         }
@@ -198,12 +203,12 @@ function Check-Tool {
 
         $check = Get-Command $Tool -ErrorAction SilentlyContinue
         if ($check) {
-            Write-Output "[OK] Found $Tool in fallback: $binDir"
+            Ok "Found $Tool in fallback: $binDir"
             return
         }
     }
 
-    Write-Error "[X] $Tool not found in PATH or fallback locations. Please install or add to PATH."
+    Err "$Tool not found in PATH or fallback locations. Please install or add to PATH."
     return
 }
 
@@ -212,31 +217,31 @@ foreach ($tool in @("7z", "gzip", "mysql", "mysqladmin", "sqlcmd")) {
 }
 
 # Ekstrak semua file.zip, kalo ada
-Write-Output "[>] Mengekstrak semua .zip di $targetFolder"
+Ok "Mengekstrak semua .zip di $targetFolder"
 Get-ChildItem -Path $targetFolder -Filter *.zip -Recurse | ForEach-Object {
     $zipFile = $_.FullName
     $outputDir = "$($_.Directory.FullName)\extracted"
     $result = & 7z x "$zipFile" "-o$outputDir" -aoa 2>&1
 
     if ($LASTEXITCODE -eq 0) {
-        Write-Output "[OK] Ekstrak ZIP: $($_.Name)"
+        Ok "Ekstrak ZIP: $($_.Name)"
     }
     else {
-        Write-Warning "[X] Gagal ekstrak ZIP: $($_.Name) → $result"
+        Err "Gagal ekstrak ZIP: $($_.Name) → $result"
     }
 }
 
 # Ekstrak semua file .gz, kalo ada
-Write-Output "[>] Mengekstrak semua .gz di $targetFolder"
+Ok "Mengekstrak semua .gz di $targetFolder"
 Get-ChildItem -Path $targetFolder -Filter *.gz -Recurse | ForEach-Object {
     $gzFile = $_.FullName
     $result = & gzip -d -f "$gzFile" 2>&1
 
     if ($LASTEXITCODE -eq 0) {
-        Write-Output "[OK] Ekstrak GZ: $($_.Name)"
+        Ok "Ekstrak GZ: $($_.Name)"
     }
     else {
-        Write-Warning "[X] Gagal ekstrak GZ: $($_.Name) === $result"
+        Err "Gagal ekstrak GZ: $($_.Name) === $result"
     }
 }
 
@@ -251,7 +256,7 @@ if ($targetDb -eq "sqlserver") {
     }
 
     # Rename semua file .bak biar gampang dibaca
-    Write-Output "[>] Rename dan Restore semua file .bak"
+    Ok "Rename dan Restore semua file .bak"
     Get-ChildItem -Path $targetFolder -Recurse -Filter *.bak | ForEach-Object {
         $originalFile = $_
         $originalPath = $originalFile.FullName
@@ -265,10 +270,10 @@ if ($targetDb -eq "sqlserver") {
         if ($originalPath -ne $renamedBak) {
             try {
                 Rename-Item -Path $originalPath -NewName "$dbName.bak" -Force
-                Write-Output "[OK] Rename: $($originalFile.Name) -> $dbName.bak"
+                Ok "Rename: $($originalFile.Name) -> $dbName.bak"
             }
             catch {
-                Write-Warning "[X] Gagal Rename $($originalFile.Name): $_"
+                Err "Gagal Rename $($originalFile.Name): $_"
                 return
             }
         }
@@ -279,23 +284,23 @@ if ($targetDb -eq "sqlserver") {
         $bakFile = $_.FullName
         $dbName = $_.BaseName
 
-        Write-Output "[>] Proses DB: $dbName dari file: $($_.Name)"
+        Ok "Proses DB: $dbName dari file: $($_.Name)"
 
         # DROP db dulu kalo ada
         $dropCmd = "IF EXISTS (SELECT name FROM sys.databases WHERE name = N'$dbName') BEGIN ALTER DATABASE [$dbName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$dbName]; END;"
         $dropResult = & sqlcmd @sqlserverParams -Q "$dropCmd" 2>&1
 
         if ($LASTEXITCODE -eq 0) {
-            Write-Output "[OK] DROP ${dbName}: berhasil"
+            Ok "DROP ${dbName}: berhasil"
         }
         else {
-            Write-Warning "[X] Gagal DROP ${dbName}: ${dropResult}"
+            Err "Gagal DROP ${dbName}: ${dropResult}"
         }
 
         # Cek Logical Name dalam metadata file
         $fileListRaw = & sqlcmd @sqlserverParams -Q "RESTORE FILELISTONLY FROM DISK = N'$bakFile'" -s "|" -W 2>&1
         if ($LASTEXITCODE -ne 0 -or -not ($fileListRaw -match "LogicalName")) {
-            Write-Warning "[X] Tidak bisa baca struktur .bak: $($_.Name)"
+            Err "Tidak bisa baca struktur .bak: $($_.Name)"
             return
         }
 
@@ -321,10 +326,10 @@ if ($targetDb -eq "sqlserver") {
         $restoreQuery = "RESTORE DATABASE [$dbName] FROM DISK = N'$bakFile' WITH MOVE N'$mdfLogical' TO N'$mdfPath', MOVE N'$ldfLogical' TO N'$ldfPath', REPLACE, STATS = 5"
         $restoreResult = & sqlcmd @sqlserverParams -Q "$restoreQuery" 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-Output "[OK] RESTORE ${dbName}: berhasil"
+            Ok "RESTORE ${dbName}: berhasil"
         }
         else {
-            Write-Warning "[X] Gagal RESTORE ${dbName}: ${restoreResult}"
+            Err "Gagal RESTORE ${dbName}: ${restoreResult}"
         }
     }
 }
@@ -346,24 +351,24 @@ if ($targetDb -eq "mysql") {
         # Drop DB
         $dropResult = & mysql @mysqlParams -e "DROP DATABASE IF EXISTS ``${db}``;" 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-Output "[OK] DROP ${db}: berhasil"
+            Ok "DROP ${db}: berhasil"
         }
         else {
-            Write-Warning "[X] Gagal DROP ${db}: ${dropResult}"
+            Err "Gagal DROP ${db}: ${dropResult}"
         }
 
         # Create DB
         $createResult = & mysql @mysqlParams -e "CREATE DATABASE ``${db}``;" 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-Output "[OK] CREATE ${db}: berhasil"
+            Ok "CREATE ${db}: berhasil"
         }
         else {
-            Write-Warning "[X] Gagal CREATE ${db}: ${createResult}"
+            Err "Gagal CREATE ${db}: ${createResult}"
         }
     }
 
     # Import file .sql ke db
-    Write-Output "[>] Import semua file .sql"
+    Ok "Import semua file .sql"
     Get-ChildItem -Path $targetFolder -Recurse -Filter *.sql | ForEach-Object {
         $sqlFile = $_.FullName
         $fileName = $_.BaseName
@@ -375,7 +380,7 @@ if ($targetDb -eq "mysql") {
         # kalo ada, maka hapus line-nya, terus buat file .cleaned.sql
         # Karena ini line dari MySQL versi lama, kalo diimpor ke MySQL baru, jadi gak bisa
         if ($content -match "NO_AUTO_CREATE_USER") {
-            Write-Output "[!] Found NO_AUTO_CREATE_USER in $($_.Name), cleaning..."
+            Warn "Found NO_AUTO_CREATE_USER in $($_.Name), cleaning..."
             $cleaned = $content -replace "NO_AUTO_CREATE_USER,?", ""
             $cleaned | Set-Content -Path $cleanSqlPath
             $finalSqlFile = $cleanSqlPath
@@ -387,7 +392,7 @@ if ($targetDb -eq "mysql") {
         # Hapus format date dari nama file
         $dbName = $fileName -replace "_\d{8}_\d{6}$", ""
 
-        Write-Output "[>] Import ke DB: $dbName dari $($_.Name)"
+        Ok "Import ke DB: $dbName dari $($_.Name)"
         Get-Content -Raw -Path $finalSqlFile | & mysql @mysqlParams $dbName
 
         # Kalo ada file .cleaned.sql, hapus
@@ -397,4 +402,4 @@ if ($targetDb -eq "mysql") {
     }
 }
 
-Write-Output "[OK] Database restoration completed! [$targetDb] [$defaultHost] [$targetFolder]"
+Ok "Database restoration completed! [$targetDb] [$defaultHost] [$targetFolder]"
