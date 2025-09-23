@@ -1,7 +1,6 @@
 #requires -Version 5.1
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# --- Elevation helper ---
 function Ensure-Elevated {
     if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
         Write-Host "Requesting administrative privileges..." -ForegroundColor Yellow
@@ -18,7 +17,7 @@ function Ensure-Elevated {
     }
 }
 
-# If running via iex the $PSCommandPath may be empty. Handle that by re-launching current script block.
+
 function Relaunch-Elevated {
     Write-Host "Relaunching elevated..." -ForegroundColor Yellow
     $scriptBlock = (Get-Content -Raw -Path $PSCommandPath -ErrorAction SilentlyContinue)
@@ -33,11 +32,10 @@ function Relaunch-Elevated {
     }
 }
 
-# Prefer simple elevation approach: if script file path is unknown (iex), ask user to re-run elevated manually.
+
 if ($PSCommandPath) {
     Ensure-Elevated
 } else {
-    # Running via iex (no PSCommandPath). If not elevated, attempt to relaunch interactive elevated prompt that runs a copy.
     if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
         Write-Host "This session was started with iex and cannot auto-elevate reliably." -ForegroundColor Yellow
         Write-Host "Please run PowerShell as Administrator and execute the command again:" -ForegroundColor Yellow
@@ -46,19 +44,16 @@ if ($PSCommandPath) {
     }
 }
 
-# --- Main ---
 try {
     Write-Host ""
     Write-Host "=== PECL/PEAR Installer for Windows (PowerShell) ===" -ForegroundColor Cyan
 
-    # Prompt for PHP path
     $phpPath = Read-Host "Copy your PHP installation path (e.g. C:\php or C:\tools\php)"
     if ([string]::IsNullOrWhiteSpace($phpPath)) {
         Write-Error "PHP Path is empty. Cancelling installation."
         exit 1
     }
 
-    # Normalize path (remove trailing slash)
     $phpPath = $phpPath.TrimEnd('\','/')
 
     if (-not (Test-Path -Path $phpPath -PathType Container)) {
@@ -66,7 +61,6 @@ try {
         exit 1
     }
 
-    # Locate php.exe
     $phpExe = Join-Path $phpPath "php.exe"
     if (-not (Test-Path -Path $phpExe -PathType Leaf)) {
         Write-Error "php.exe not found in $phpPath. Make sure you've provided the correct PHP installation path."
@@ -75,11 +69,9 @@ try {
 
     Write-Host "PHP found: $phpExe" -ForegroundColor Green
 
-    # Add to current PATH for this session
     $env:PATH = "$phpPath;$env:PATH"
     Write-Host "Added PHP path to current session PATH."
 
-    # Persist to USER PATH (so future shells see it)
     try {
         $currentUserPath = [Environment]::GetEnvironmentVariable("PATH","User")
         if (-not ($currentUserPath -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ieq $phpPath })) {
@@ -95,7 +87,6 @@ try {
 
     Push-Location -Path $phpPath
 
-    # Helper to download a file if not present
     function Ensure-File {
         param(
             [string]$Url,
@@ -115,12 +106,10 @@ try {
         }
     }
 
-    # Download required files
     Ensure-File -Url "https://raw.githubusercontent.com/pear/pear-core/refs/heads/master/scripts/peclcmd.php" -OutFile "peclcmd.php"
     Ensure-File -Url "https://raw.githubusercontent.com/pear/pear-core/refs/heads/master/scripts/pearcmd.php" -OutFile "pearcmd.php"
     Ensure-File -Url "https://pear.php.net/go-pear.phar" -OutFile "go-pear.phar"
 
-    # Create pecl.bat if missing (simple wrapper)
     $peclBatPath = Join-Path $phpPath "pecl.bat"
     if (-not (Test-Path -Path $peclBatPath)) {
         Write-Host "Creating pecl.bat..."
@@ -140,17 +129,35 @@ try {
         Write-Host "pecl.bat exists, skipping creation."
     }
 
-    # Run go-pear.phar using php
     Write-Host "Running: php go-pear.phar"
-    try {
-        & $phpExe "go-pear.phar"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "php go-pear.phar returned exit code $LASTEXITCODE"
-        } else {
-            Write-Host "Completed go-pear.phar" -ForegroundColor Green
+    # try {
+    #     & $phpExe "go-pear.phar"
+    #     if ($LASTEXITCODE -ne 0) {
+    #         Write-Warning "php go-pear.phar returned exit code $LASTEXITCODE"
+    #     } else {
+    #         Write-Host "Completed go-pear.phar" -ForegroundColor Green
+    #     }
+    # } catch {
+    #     Write-Error "Failed to run go-pear.phar: $_"
+    # }
+    Write-Host "Running: php go-pear.phar"
+    if (Get-Command refreshenv -ErrorAction SilentlyContinue) {
+        Write-Host "refreshenv available, running it..." -ForegroundColor Green
+        Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
+        refreshenv
+        & php "go-pear.phar"
+    } else {
+        Write-Host "refreshenv not found, falling back to full path..." -ForegroundColor Yellow
+        try {
+            & $phpExe "go-pear.phar"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "php go-pear.phar returned exit code $LASTEXITCODE"
+            } else {
+                Write-Host "Completed go-pear.phar" -ForegroundColor Green
+            }
+        } catch {
+            Write-Error "Failed to run go-pear.phar: $_"
         }
-    } catch {
-        Write-Error "Failed to run go-pear.phar: $_"
     }
 
     Pop-Location
