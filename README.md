@@ -32,6 +32,16 @@ Misalnya `C:/xampp/php` atau `D:/laragon/bin/php/php8`
 pecl channel-update pecl.php.net
 ```
 
+## Cara pake **`pecl-installer-windows.ps1`**
+Install PECL di Windows, tambah PHP ke PATH (kalo belum ada)
+- Buka `powershell`
+- Ketik
+```
+irm https://raw.githubusercontent.com/virdiggg/script-batch/refs/heads/master/pecl-installer-windows.ps1 | iex
+```
+- Ikutin instruksinya
+
+
 ## Cara pake **`restore-db.ps1`**
 Bisa buat restore DB MySQL dan SQL Server 2008
 - Buka `powershell`
