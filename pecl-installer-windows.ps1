@@ -1,88 +1,105 @@
 #requires -Version 5.1
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+function Info($msg)  { Write-Host "[*] $msg" -ForegroundColor Cyan }
+function Ok($msg)    { Write-Host "[OK] $msg" -ForegroundColor Green }
+function Warn($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
+function Err($msg)   { Write-Host "[X] $msg" -ForegroundColor Red }
+
 function Ensure-Elevated {
-    if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-        Write-Host "Requesting administrative privileges..." -ForegroundColor Yellow
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+    if (-not $isAdmin) {
+        Warn "Requesting administrative privileges..."
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = (Get-Process -Id $PID).Path
         $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
         $psi.Verb = "runas"
         try {
             [System.Diagnostics.Process]::Start($psi) | Out-Null
+            Ok "Launched elevated process. (Original session remains open.)"
         } catch {
-            Write-Error "Failed to elevate. Exiting."
+            Err "Failed to elevate: $_"
         }
-        Exit 0
+        return
+    } else {
+        Info "Already running as Administrator."
     }
 }
 
 
 function Relaunch-Elevated {
-    Write-Host "Relaunching elevated..." -ForegroundColor Yellow
+    Info "Relaunching elevated..."
     $scriptBlock = (Get-Content -Raw -Path $PSCommandPath -ErrorAction SilentlyContinue)
     if (-not $scriptBlock) {
-        # Running from pipeline (iex). Reconstruct command to re-run this session elevated.
-        $cmd = "powershell -NoProfile -ExecutionPolicy Bypass -Command `"& { $(Get-Content -Raw -Path $MyInvocation.MyCommand.Definition) }`""
-        Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","& { $([ScriptBlock]::Create((Get-Content -Raw -Path $MyInvocation.MyCommand.Definition))) }" -Verb RunAs
-        Exit 0
+        try {
+            Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-Command","& { $([ScriptBlock]::Create((Get-Content -Raw -Path $MyInvocation.MyCommand.Definition))) }" -Verb RunAs
+            Ok "Elevated session started (from iex flow). Original session remains open."
+        } catch {
+            Err "Failed to start elevated session (iex path): $_"
+        }
+        return
     } else {
-        Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$PSCommandPath -Verb RunAs
-        Exit 0
+        try {
+            Start-Process -FilePath "powershell" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$PSCommandPath -Verb RunAs
+            Ok "Elevated session started. Original session remains open."
+        } catch {
+            Err "Failed to start elevated session (file path): $_"
+        }
+        return
     }
 }
-
 
 if ($PSCommandPath) {
     Ensure-Elevated
 } else {
-    if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-        Write-Host "This session was started with iex and cannot auto-elevate reliably." -ForegroundColor Yellow
-        Write-Host "Please run PowerShell as Administrator and execute the command again:" -ForegroundColor Yellow
-        Write-Host "  irm <url-to-script.ps1> | iex" -ForegroundColor Cyan
-        Exit 1
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+    if (-not $isAdmin) {
+        Warn "This session was started with iex and cannot auto-elevate reliably."
+        Warn "Please run PowerShell as Administrator and execute the command again:"
+        Info "  irm <url-to-script.ps1> | iex"
+        return
     }
 }
 
 try {
     Write-Host ""
-    Write-Host "=== PECL/PEAR Installer for Windows (PowerShell) ===" -ForegroundColor Cyan
+    Info "=== PECL/PEAR Installer for Windows (PowerShell) ==="
 
     $phpPath = Read-Host "Copy your PHP installation path (e.g. C:\php or C:\tools\php)"
     if ([string]::IsNullOrWhiteSpace($phpPath)) {
-        Write-Error "PHP Path is empty. Cancelling installation."
-        exit 1
+        Err "PHP Path is empty. Cancelling installation."
+        throw "Installation failed: empty PHP path."
     }
 
     $phpPath = $phpPath.TrimEnd('\','/')
 
     if (-not (Test-Path -Path $phpPath -PathType Container)) {
-        Write-Error "Invalid PHP path: $phpPath"
-        exit 1
+        Err "Invalid PHP path: $phpPath"
+        throw "Installation failed: invalid PHP path."
     }
 
     $phpExe = Join-Path $phpPath "php.exe"
     if (-not (Test-Path -Path $phpExe -PathType Leaf)) {
-        Write-Error "php.exe not found in $phpPath. Make sure you've provided the correct PHP installation path."
-        exit 1
+        Err "php.exe not found in $phpPath. Make sure you've provided the correct PHP installation path."
+        throw "Installation failed: php.exe not found."
     }
 
-    Write-Host "PHP found: $phpExe" -ForegroundColor Green
+    Ok "PHP found: $phpExe"
 
     $env:PATH = "$phpPath;$env:PATH"
-    Write-Host "Added PHP path to current session PATH."
+    Info "Added PHP path to current session PATH."
 
     try {
         $currentUserPath = [Environment]::GetEnvironmentVariable("PATH","User")
         if (-not ($currentUserPath -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ieq $phpPath })) {
             $newUserPath = if ([string]::IsNullOrEmpty($currentUserPath)) { $phpPath } else { "$currentUserPath;$phpPath" }
             [Environment]::SetEnvironmentVariable("PATH",$newUserPath,"User")
-            Write-Host "Added PHP path to USER environment PATH. You may need to re-open shells for it to take effect." -ForegroundColor Green
+            Ok "Added PHP path to USER environment PATH. You may need to re-open shells for it to take effect."
         } else {
-            Write-Host "PHP path already exists in USER PATH."
+            Info "PHP path already exists in USER PATH."
         }
     } catch {
-        Write-Warning "Failed to update user PATH: $_"
+        Warn "Failed to update user PATH: $_"
     }
 
     Push-Location -Path $phpPath
@@ -93,16 +110,16 @@ try {
             [string]$OutFile
         )
         if (-not (Test-Path -Path $OutFile)) {
-            Write-Host "Downloading $OutFile ..."
+            Info "Downloading $OutFile ..."
             try {
                 Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -ErrorAction Stop
-                Write-Host "Downloaded $OutFile" -ForegroundColor Green
+                Ok "Downloaded $OutFile"
             } catch {
-                Write-Error "Failed to download $Url : $_"
+                Err "Failed to download $Url : $_"
                 throw
             }
         } else {
-            Write-Host "$OutFile already exists, skipping download."
+            Info "$OutFile already exists, skipping download."
         }
     }
 
@@ -112,7 +129,7 @@ try {
 
     $peclBatPath = Join-Path $phpPath "pecl.bat"
     if (-not (Test-Path -Path $peclBatPath)) {
-        Write-Host "Creating pecl.bat..."
+        Info "Creating pecl.bat..."
         $lines = @(
             '@echo off'
             'set PHP_PEAR_PHP_BIN=php.exe'
@@ -121,51 +138,54 @@ try {
         )
         try {
             $lines | Set-Content -Path $peclBatPath -Encoding ASCII
-            Write-Host "Created $peclBatPath" -ForegroundColor Green
+            Ok "Created $peclBatPath"
         } catch {
-            Write-Warning "Failed to create $peclBatPath : $_"
+            Warn "Failed to create $peclBatPath : $_"
         }
     } else {
-        Write-Host "pecl.bat exists, skipping creation."
+        Info "pecl.bat exists, skipping creation."
     }
 
-    Write-Host "Running: php go-pear.phar"
-    # try {
-    #     & $phpExe "go-pear.phar"
-    #     if ($LASTEXITCODE -ne 0) {
-    #         Write-Warning "php go-pear.phar returned exit code $LASTEXITCODE"
-    #     } else {
-    #         Write-Host "Completed go-pear.phar" -ForegroundColor Green
-    #     }
-    # } catch {
-    #     Write-Error "Failed to run go-pear.phar: $_"
-    # }
-    Write-Host "Running: php go-pear.phar"
+    Info "Running: php go-pear.phar"
+
     if (Get-Command refreshenv -ErrorAction SilentlyContinue) {
-        Write-Host "refreshenv available, running it..." -ForegroundColor Green
-        Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
-        refreshenv
-        & php "go-pear.phar"
+        Ok "refreshenv available, running it..."
+        try {
+            if ($env:ChocolateyInstall) {
+                Import-Module ($env:ChocolateyInstall + "\helpers\chocolateyProfile.psm1") -ErrorAction SilentlyContinue
+            }
+        } catch {
+            Warn "Could not import chocolatey helpers: $_"
+        }
+
+        try {
+            refreshenv
+            & php "go-pear.phar"
+            if ($LASTEXITCODE -ne 0) {
+                Warn "php go-pear.phar returned exit code $LASTEXITCODE"
+            } else {
+                Ok "Completed go-pear.phar"
+            }
+        } catch {
+            Err "Failed to run go-pear.phar with refreshenv: $_"
+        }
     } else {
-        Write-Host "refreshenv not found, falling back to full path..." -ForegroundColor Yellow
+        Warn "refreshenv not found, falling back to full path..."
         try {
             & $phpExe "go-pear.phar"
             if ($LASTEXITCODE -ne 0) {
-                Write-Warning "php go-pear.phar returned exit code $LASTEXITCODE"
+                Warn "php go-pear.phar returned exit code $LASTEXITCODE"
             } else {
-                Write-Host "Completed go-pear.phar" -ForegroundColor Green
+                Ok "Completed go-pear.phar"
             }
         } catch {
-            Write-Error "Failed to run go-pear.phar: $_"
+            Err "Failed to run go-pear.phar: $_"
         }
     }
 
     Pop-Location
 
-    Write-Host "Finished. If you need to use pecl from new shells, open a new PowerShell/CMD window." -ForegroundColor Cyan
-    exit 0
-
+    Ok "Finished. If you need to use pecl from new shells, open a new PowerShell/CMD window."
 } catch {
-    Write-Error "Unhandled error: $_"
-    exit 1
+    Err "Unhandled error: $_"
 }
