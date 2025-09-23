@@ -141,18 +141,13 @@ try {
     }
 
     # Run go-pear.phar using php
-    # Run go-pear.phar and capture all output
-    Write-Host "Running: php go-pear.phar (capturing output)" -ForegroundColor Cyan
+    Write-Host "Running: php go-pear.phar"
     try {
-        $proc = Start-Process -FilePath $phpExe -ArgumentList "go-pear.phar" -RedirectStandardOutput "$phpPath\pear_install.log" -RedirectStandardError "$phpPath\pear_install.err" -Wait -PassThru
-        Write-Host "Process exited with code $($proc.ExitCode)"
-        if (Test-Path "$phpPath\pear_install.log") {
-            Write-Host "`n--- STDOUT ---" -ForegroundColor Yellow
-            Get-Content "$phpPath\pear_install.log" | Out-Host
-        }
-        if (Test-Path "$phpPath\pear_install.err") {
-            Write-Host "`n--- STDERR ---" -ForegroundColor Red
-            Get-Content "$phpPath\pear_install.err" | Out-Host
+        & $phpExe "go-pear.phar"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "php go-pear.phar returned exit code $LASTEXITCODE"
+        } else {
+            Write-Host "Completed go-pear.phar" -ForegroundColor Green
         }
     } catch {
         Write-Error "Failed to run go-pear.phar: $_"
