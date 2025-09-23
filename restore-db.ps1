@@ -71,7 +71,7 @@ Info "Configuration:"
 Info "  Database: $targetDb"
 Info "  User DB: $userDb"
 Info "  Target Folder: $targetFolder"
-Info ""
+Blank ""
 
 function Check-Tool {
     param($Tool)
@@ -218,7 +218,9 @@ foreach ($tool in @("7z", "gzip", "mysql", "mysqladmin", "sqlcmd")) {
 }
 
 # Ekstrak semua file.zip, kalo ada
+Blank ""
 Ok "Mengekstrak semua .zip di $targetFolder"
+Blank ""
 Get-ChildItem -Path $targetFolder -Filter *.zip -Recurse | ForEach-Object {
     $zipFile = $_.FullName
     $outputDir = "$($_.Directory.FullName)\extracted"
@@ -233,7 +235,9 @@ Get-ChildItem -Path $targetFolder -Filter *.zip -Recurse | ForEach-Object {
 }
 
 # Ekstrak semua file .gz, kalo ada
+Blank ""
 Ok "Mengekstrak semua .gz di $targetFolder"
+Blank ""
 Get-ChildItem -Path $targetFolder -Filter *.gz -Recurse | ForEach-Object {
     $gzFile = $_.FullName
     $result = & gzip -d -f "$gzFile" 2>&1
@@ -257,7 +261,9 @@ if ($targetDb -eq "sqlserver") {
     }
 
     # Rename semua file .bak biar gampang dibaca
+    Blank ""
     Ok "Rename dan Restore semua file .bak"
+    Blank ""
     Get-ChildItem -Path $targetFolder -Recurse -Filter *.bak | ForEach-Object {
         $originalFile = $_
         $originalPath = $originalFile.FullName
@@ -369,7 +375,9 @@ if ($targetDb -eq "mysql") {
     }
 
     # Import file .sql ke db
+    Blank ""
     Ok "Import semua file .sql"
+    Blank ""
     Get-ChildItem -Path $targetFolder -Recurse -Filter *.sql | ForEach-Object {
         $sqlFile = $_.FullName
         $fileName = $_.BaseName
@@ -404,5 +412,6 @@ if ($targetDb -eq "mysql") {
 }
 
 Ok "Database restoration completed! [$targetDb] [$defaultHost] [$targetFolder]"
+
 
 
