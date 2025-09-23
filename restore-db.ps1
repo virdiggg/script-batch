@@ -5,6 +5,7 @@ function Info($msg)  { Write-Host "[>] $msg" -ForegroundColor Cyan }
 function Ok($msg)    { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Warn($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
 function Err($msg)   { Write-Host "[X] $msg" -ForegroundColor Red }
+function Blank($msg) { Write-Host "$msg" }
 
 $defaultDb = "mysql"
 $defaultUserMysql = "root"
@@ -403,4 +404,5 @@ if ($targetDb -eq "mysql") {
 }
 
 Ok "Database restoration completed! [$targetDb] [$defaultHost] [$targetFolder]"
+
 
