@@ -43,7 +43,7 @@ irm https://raw.githubusercontent.com/virdiggg/script-batch/refs/heads/master/pe
 
 
 ## Cara pake **`restore-db.ps1`**
-Bisa buat restore DB MySQL dan SQL Server 2008
+Bisa buat restore DB MySQL dan SQL Server 2008 di Windows
 - Buka `powershell`
 - Ketik
 ```
